@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "props": {},
+  "states": [
+    {
+      "key": "dataset",
+      "label": "データ",
+      "about": "PR / Issue 一覧の中身(3 タブ共通)",
+      "kind": "radio",
+      "options": [
+        { "value": "few", "label": "少数(代表)" },
+        { "value": "empty", "label": "空" },
+        { "value": "many", "label": "多数(30件)" },
+        { "value": "long", "label": "長いタイトル" },
+        { "value": "loading", "label": "読み込み中" },
+        { "value": "error", "label": "エラー(gh 未ログイン)" },
+        { "value": "norepo", "label": "エラー(git リポジトリではない)" }
+      ],
+      "default": "few"
+    },
+    {
+      "key": "tab",
+      "label": "タブ",
+      "kind": "radio",
+      "options": [
+        { "value": "0", "label": "My PRs" },
+        { "value": "1", "label": "Review" },
+        { "value": "2", "label": "Issues" }
+      ],
+      "default": "0"
+    },
+    {
+      "key": "panel",
+      "label": "パネル表示(狭い幅)",
+      "about": "ON でパネル用の詰めた表示、OFF で popup 表示",
+      "kind": "switch",
+      "default": false
+    }
+  ]
+}
