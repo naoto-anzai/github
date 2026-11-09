@@ -23,9 +23,8 @@
       "label": "タブ",
       "kind": "radio",
       "options": [
-        { "value": "0", "label": "My PRs" },
-        { "value": "1", "label": "Review" },
-        { "value": "2", "label": "Issues" }
+        { "value": "0", "label": "PRs" },
+        { "value": "1", "label": "Issues" }
       ],
       "default": "0"
     },

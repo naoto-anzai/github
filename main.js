@@ -1,5 +1,5 @@
 // GitHub: PRs and issues of the focused pane's repo (via gh, already logged in).
-// Tabs: Mine (my PRs) · Review (review requested) · Issues (assigned to me, else open).
+// Tabs: PRs (my PRs + review requested, each row tagged "mine" / "review") · Issues (assigned to me).
 // Row: click = open in browser · "review" = wt-review <n> in a new tab · issue "claude" = new tab, claude gets the issue.
 // ←/→ switch tab, ↑/↓ move, Enter open, Esc close.
 
@@ -7,11 +7,28 @@ import { View, div } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import { spaces, panes, focused, exec, run, theme, props, closeOverlay, shared } from "herdr";
 
-const TABS = [
-  { id: "mine", label: "My PRs", kind: "pr", args: ["--author", "@me"] },
-  { id: "review", label: "Review", kind: "pr", args: ["--search", "review-requested:@me"] },
-  { id: "issues", label: "Issues", kind: "issue", args: ["--assignee", "@me"] },
+// gh から取る一覧(mine と review は表示では PRs に統合する)
+const SOURCES = [
+  { id: "mine", kind: "pr", args: ["--author", "@me"] },
+  { id: "review", kind: "pr", args: ["--search", "review-requested:@me"] },
+  { id: "issues", kind: "issue", args: ["--assignee", "@me"] },
 ];
+const TABS = [
+  { id: "prs", label: "PRs", kind: "pr" },
+  { id: "issues", label: "Issues", kind: "issue" },
+];
+// 自分の PR とレビュー待ちを 1 本にし、各行に roles("mine" / "review")を付ける
+function merge(raw) {
+  const byNum = new Map();
+  for (const role of ["mine", "review"]) {
+    for (const r of raw[role] ?? []) {
+      const cur = byNum.get(r.number);
+      if (cur) cur.roles.push(role); else byNum.set(r.number, { ...r, roles: [role] });
+    }
+  }
+  const prs = [...byNum.values()].sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
+  return { prs, issues: raw.issues ?? [] };
+}
 const PR_FIELDS = "number,title,author,isDraft,reviewDecision,statusCheckRollup,headRefName,url,updatedAt";
 const ISSUE_FIELDS = "number,title,labels,url,updatedAt";
 
@@ -120,9 +137,10 @@ export default class Github extends View {
     if (sb) {
       const key = `${sb.dataset}|${sb.tab}`;
       if (key !== this.mockKey) { this.mockKey = key; this.tab = Number(sb.tab ?? 0); this.at = 0; }
-      return { sb, root: "mock-repo", ...mockState(sb.dataset ?? "few") };
+      const m = mockState(sb.dataset ?? "few");
+      return { sb, root: "mock-repo", ...m, data: merge(m.data) };
     }
-    return { sb: null, root: this.root, data: this.data, loaded: this.loaded, error: this.error };
+    return { sb: null, root: this.root, data: merge(this.data), loaded: this.loaded, error: this.error };
   }
 
   load(cx) {
@@ -134,7 +152,7 @@ export default class Github extends View {
         const top = await exec("git", ["rev-parse", "--show-toplevel"], { cwd: dir, on: this.on });
         if (top.code !== 0) throw new Error("Not a git repository");
         this.root = top.stdout.trim();
-        await Promise.all(TABS.map(async (t) => {
+        await Promise.all(SOURCES.map(async (t) => {
           const args = [t.kind, "list", ...t.args, "--limit", "30", "--json", t.kind === "pr" ? PR_FIELDS : ISSUE_FIELDS];
           const r = await exec("gh", args, { cwd: this.root, on: this.on });
           if (r.code !== 0) throw new Error((r.stderr || r.stdout).trim().split("\n")[0]);
@@ -212,12 +230,13 @@ export default class Github extends View {
             .child(div().w(this.popup ? 46 : 38).flex_none().text_color(t.dim).child(`#${r.number}`))
             .when(tab.kind === "pr", (el) => el.child(div().w(10).flex_none().text_color(cc).child(c ? "●" : "○")))
             .child(div().flex_1().truncate().text_color(t.foreground).child(r.title))
+            .when(tab.kind === "pr", (el) => el.child(div().text_size(11).text_color(r.roles.includes("review") ? t.working : t.dim).child(r.roles.includes("review") ? "review" : "mine")))
             .when(r.isDraft, (el) => el.child(div().text_size(11).text_color(t.dim).child("draft")))
             .when(r.reviewDecision === "APPROVED", (el) => el.child(div().text_size(11).text_color(t.done).child("approved")))
             .when(r.reviewDecision === "CHANGES_REQUESTED", (el) => el.child(div().text_size(11).text_color(t.blocked).child("changes")))
             .when(this.popup && tab.kind === "pr" && r.author?.login, (el) => el.child(div().text_size(11).text_color(t.dim).child(r.author.login)))
             .child(div().w(28).flex_none().text_size(11).text_color(t.dim).child(ago(r.updatedAt)))
-            .when(tab.kind === "pr" && tab.id === "review", (el) => el.child(this.btn(t, `gh-r-${i}`, "review", () => this.review(r))))
+            .when(tab.kind === "pr" && r.roles.includes("review"), (el) => el.child(this.btn(t, `gh-r-${i}`, "review", () => this.review(r))))
             .when(tab.kind === "issue", (el) => el.child(this.btn(t, `gh-c-${i}`, "claude", () => this.claude(r))));
         })))
       .when(Boolean(v.sb && this.noteText), (el) => el.child(div().text_size(11).text_color(t.dim).child(this.noteText)));

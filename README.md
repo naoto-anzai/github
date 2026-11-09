@@ -2,9 +2,9 @@
 
 herdr-app の Mod。フォーカス中ペインのリポジトリの PR と Issue を `gh` で一覧表示する(`gh` にログイン済みであること)。
 
-- タブ: My PRs(自分の PR)/ Review(レビュー依頼)/ Issues(自分にアサイン)
+- タブ: PRs(自分の PR とレビュー待ちを 1 本にまとめ、各行に `mine` / `review` を表示)/ Issues(自分にアサイン)
 - 行をクリック、または Enter でブラウザで開く
-- Review タブの `review` ボタン: 新しいタブで `wt-review <番号>` を実行
+- レビュー待ちの PR の `review` ボタン: 新しいタブで `wt-review <番号>` を実行
 - Issues タブの `claude` ボタン: 新しいタブで claude に Issue を渡す
 - ←/→ タブ切替、↑/↓ 移動、^R 再読込、Esc 閉じる
 - popup(`mod.json` の overlay)でも、右パネルのブロックとしても使える
